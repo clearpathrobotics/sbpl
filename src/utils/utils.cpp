@@ -34,6 +34,7 @@
 #include <sbpl_cpr/utils/key.h>
 #include <sbpl_cpr/utils/mdp.h>
 #include <sbpl_cpr/utils/sbpl_bfs_2d.h>
+#include <algorithm>
 
 using namespace std;
 
@@ -744,6 +745,14 @@ void computeDistancestoNonfreeAreas(unsigned char** Grid2D, int width_x, int hei
     }//over x
 }
 
+struct sbpl_2Dcell_t_less_than
+{
+    inline bool operator() (const sbpl_2Dcell_t& a, const sbpl_2Dcell_t& b)
+    {
+      return a.y < b.y || (a.y == b.y && a.x < b.x);
+    }
+};
+
 void get_2d_motion_cells(vector<sbpl_2Dpt_t> polygon, vector<sbpl_xy_theta_pt_t> poses, vector<sbpl_2Dcell_t>* cells,
                          double res)
 {
@@ -771,6 +780,9 @@ void get_2d_motion_cells(vector<sbpl_2Dpt_t> polygon, vector<sbpl_xy_theta_pt_t>
             cells->push_back(*it);
         }
     }
+
+    // sort cells to make later compares more cache friendly
+    std::sort(cells->begin(), cells->end(), sbpl_2Dcell_t_less_than());
 }
 
 //This function is inefficient and should be avoided if possible (you should
