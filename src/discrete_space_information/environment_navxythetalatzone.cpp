@@ -71,7 +71,7 @@ EnvironmentNAVXYTHETALATZone::~EnvironmentNAVXYTHETALATZone()
 }
 
 // fall-back cost function if none is provided
-static unsigned char default_cost_function(size_t x, size_t y, unsigned char dir, void* data)
+static unsigned char default_cost_function(size_t x, size_t y, int /*dx*/, int /*dy*/, void* data)
 {
     EnvironmentNAVXYTHETALATZone* env = (EnvironmentNAVXYTHETALATZone*)data;
     return env->GetMapCost(x, y);
@@ -113,7 +113,7 @@ void EnvironmentNAVXYTHETALATZone::EnsureHeuristicsUpdated(bool bGoalHeuristics)
 }
 
 
-void EnvironmentNAVXYTHETALATZone::SetSearchCostFunction(unsigned char (*cost_func)(size_t, size_t, unsigned char, void*), void* cost_data)
+void EnvironmentNAVXYTHETALATZone::SetSearchCostFunction(unsigned char (*cost_func)(size_t, size_t, int, int, void*), void* cost_data)
 {
     fwd_cost_func_ = cost_func;
     fwd_cost_data_ = cost_data;
@@ -240,30 +240,59 @@ int EnvironmentNAVXYTHETALATZone::GetActionCost(int SourceX, int SourceY, int So
 
     //need to iterate over discretized center cells and compute cost based on them
     unsigned char maxcellcost = 0;
-    for (i = 0; i < (int)action->interm3DcellsV.size(); i++) {
-        interm3Dcell = action->interm3DcellsV.at(i);
-        interm3Dcell.x = interm3Dcell.x + SourceX;
-        interm3Dcell.y = interm3Dcell.y + SourceY;
+    const size_t size = action->interm3DcellsV.size();
+    if(size)
+    {
+        int dx, dy; // deltas
+        int px, py; // positions
+        sbpl_xy_theta_cell_t* icells = &(action->interm3DcellsV.at(0));
 
-        if (interm3Dcell.x < 0 || interm3Dcell.x >= EnvNAVXYTHETALATCfg.EnvWidth_c || interm3Dcell.y < 0
-            || interm3Dcell.y >= EnvNAVXYTHETALATCfg.EnvHeight_c) return INFINITECOST;
-
-        unsigned char this_cell_cost;
-
-        if(fwd_cost_func_ && fwd_cost_data_)
+        for (i = 0; i < size; i++)
         {
-          unsigned char dir = SBPL2DZoneGridSearch::dxdy2dir(interm3Dcell.x, interm3Dcell.y);
-          this_cell_cost = fwd_cost_func_(interm3Dcell.x, interm3Dcell.y, dir, fwd_cost_data_);
-        }
-        else
-        {
-          this_cell_cost = EnvNAVXYTHETALATCfg.Grid2D[interm3Dcell.x][interm3Dcell.y];
-        }
+            interm3Dcell = action->interm3DcellsV.at(i);
 
-        maxcellcost = __max(maxcellcost, this_cell_cost);
+            if(i < size-1)
+            {
+              dx = icells[i+1].x - icells[i].x;
+              dy = icells[i+1].y - icells[i].y;
+            }
+            else
+            {
+              if(size > 1)
+              {
+                dx = icells[i].x - icells[i-1].x;
+                dy = icells[i].y - icells[i-1].y;
+              }
+              else
+              {
+                dx = 0;
+                dy = 0;
+              }
+            }
 
-        //check that the robot is NOT in the cell at which there is no valid orientation
-        if (maxcellcost >= EnvNAVXYTHETALATCfg.cost_inscribed_thresh) return INFINITECOST;
+            px = SourceX + icells[i].x;
+            py = SourceY + icells[i].y;
+
+            if (px < 0 || px >= EnvNAVXYTHETALATCfg.EnvWidth_c ||
+                py < 0 || py >= EnvNAVXYTHETALATCfg.EnvHeight_c)
+                return INFINITECOST;
+
+            unsigned char this_cell_cost;
+
+            if(fwd_cost_func_ && fwd_cost_data_)
+            {
+                this_cell_cost = fwd_cost_func_(px, py, dx, dy, fwd_cost_data_);
+            }
+            else
+            {
+                this_cell_cost = EnvNAVXYTHETALATCfg.Grid2D[px][py];
+            }
+
+            maxcellcost = __max(maxcellcost, this_cell_cost);
+
+            //check that the robot is NOT in the cell at which there is no valid orientation
+            if (maxcellcost >= EnvNAVXYTHETALATCfg.cost_inscribed_thresh) return INFINITECOST;
+        }
     }
 
     //check collisions that for the particular footprint orientation along the action

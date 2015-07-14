@@ -28,12 +28,12 @@ public:
 
     /// TODO: document this function
     bool search(int startx_c, int starty_c, int goalx_c, int goaly_c,
-                unsigned char (*cost_func)(size_t, size_t, unsigned char, void*),
+                unsigned char (*cost_func)(size_t, size_t, int, int, void*),
                 void* cost_data,
                 unsigned char obsthresh,
                 SBPL_2DGRIDSEARCH_TERM_CONDITION termination_condition);
 
-    static unsigned char dxdy2dir(int dx, int dy);
+    static unsigned char dxdyToDir(int dx, int dy);
 
     /**
      * \brief print all the values

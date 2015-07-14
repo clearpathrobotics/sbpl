@@ -88,7 +88,7 @@ inline int max_dir(const int a, const int b, const int c, const int dx, const in
 
 // this function finds the best matching direction via dot products and
 // a binary search
-unsigned char SBPL2DZoneGridSearch::dxdy2dir(int dx, int dy)
+unsigned char SBPL2DZoneGridSearch::dxdyToDir(int dx, int dy)
 {
   if(dx == 0 && dy == 0)
     return 0;
@@ -247,7 +247,7 @@ void SBPL2DZoneGridSearch::site_data_coordinates(const unsigned char* c, size_t&
 
 bool SBPL2DZoneGridSearch::search(
             int startx_c, int starty_c, int goalx_c, int goaly_c,
-            unsigned char (*cost_func)(size_t, size_t, unsigned char, void*),
+            unsigned char (*cost_func)(size_t, size_t, int, int, void*),
             void* cost_data,
             unsigned char obsthresh,
             SBPL_2DGRIDSEARCH_TERM_CONDITION termination_condition)
@@ -367,7 +367,10 @@ bool SBPL2DZoneGridSearch::search(
             if(site_data[new_idx] & CLOSED_FLAG) continue;
 
             //compute the cost
-            const size_t mapcost = cost_func(newx, newy, reverse_search_direction_?rev_dir[dir]:dir, cost_data);
+            const size_t mapcost = cost_func(newx, newy,
+                                             reverse_search_direction_?-dir_dx[dir]:dir_dx[dir],
+                                             reverse_search_direction_?-dir_dy[dir]:dir_dy[dir],
+                                             cost_data);
 
             //check for obstacle
             if (mapcost >= obsthresh) continue;
