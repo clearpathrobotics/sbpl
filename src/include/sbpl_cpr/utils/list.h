@@ -686,4 +686,220 @@ private:
     }
 };
 
+// sliding bucket for templated data
+template <typename T>
+class TSlidingBucket
+{
+    //data
+public:
+    //dynamic buckets.
+    T** bucketV;
+    int* lastelementindexV; //index of the last element for each bucket
+    int numofbuckets;
+    int currentminelement_bindex; //index of the bucket of the current min element
+    int currentminelement_index; //index of the current minelement in the bucket
+    int currentmaxelement_priority; //the maxelement priority in the list
+    int currentminelement_priority; //the priority of the current minelement
+    int currentfirstbucket_bindex; //index of the bucket that corresponds to the first bucket in the list (lowest priority)
+    int currentfirstbucket_priority; //priority of the first bucket in the list
+    int* dynamicsize; //the size of each bucket
+
+    //constructors
+public:
+    // an initial_dynamic_size of 0 will use fixed size buckets
+    TSlidingBucket(int num_of_buckets)
+    {
+        numofbuckets = num_of_buckets;
+
+        //allocate memory
+        bucketV = new T*[numofbuckets];
+        lastelementindexV = new int[numofbuckets];
+
+        dynamicsize = new int[numofbuckets];
+        for (int i = 0; i < numofbuckets; i++) {
+          dynamicsize[i] = 0;
+          bucketV[i] = 0;
+        }
+
+        currentminelement_bindex = currentfirstbucket_bindex = 0;
+        currentminelement_index = -1;
+        currentmaxelement_priority = currentminelement_priority = currentfirstbucket_priority = 0;
+    }
+
+    ~TSlidingBucket()
+    {
+        for (int i = 0; i < numofbuckets; i++) {
+            if (bucketV[i] != NULL) {
+                free(bucketV[i]);
+                bucketV[i] = NULL;
+            }
+        }
+
+        delete [] dynamicsize;
+        delete[] bucketV;
+        delete[] lastelementindexV;
+    }
+
+    //functions
+public:
+    inline bool empty()
+    {
+        return (currentminelement_index == -1 && currentmaxelement_priority == currentminelement_priority);
+    }
+
+    inline int getminkey()
+    {
+        return currentminelement_priority;
+    }
+
+    void reset()
+    {
+        currentminelement_bindex = currentfirstbucket_bindex = 0;
+        currentminelement_index = -1;
+        currentmaxelement_priority = currentminelement_priority = currentfirstbucket_priority = 0;
+        for (int i = 0; i < numofbuckets; i++) {
+            lastelementindexV[i] = -1;
+            if (bucketV[i] == NULL) continue;
+
+            for (int eind = 0; eind < dynamicsize[i]; eind++)
+                bucketV[i][eind] = NULL;
+        }
+
+    }
+
+    T popminelement()
+    {
+        if (currentminelement_index == -1 && currentmaxelement_priority == currentminelement_priority)
+            return NULL;
+        else {
+            T currentelement = NULL;
+            if (currentminelement_index == -1 || bucketV[currentminelement_bindex] == NULL
+                || bucketV[currentminelement_bindex][currentminelement_index] == NULL)
+                currentelement = recomputeandreturnmin();
+            else
+                currentelement = bucketV[currentminelement_bindex][currentminelement_index];
+
+            //delete the element
+            bucketV[currentminelement_bindex][currentminelement_index] = NULL;
+
+            //reset the first bucket to the element that was just delete
+            currentfirstbucket_bindex = currentminelement_bindex;
+            currentfirstbucket_priority = currentminelement_priority;
+
+            //recomputemin
+            recomputeandreturnmin();
+
+            return currentelement;
+        }
+    }
+
+    T getminelement()
+    {
+        if (currentminelement_index == -1 && currentmaxelement_priority == currentminelement_priority)
+            return NULL;
+        else {
+            T currentelement = NULL;
+            if (currentminelement_index == -1 || bucketV[currentminelement_bindex] == NULL
+                || bucketV[currentminelement_bindex][currentminelement_index] == NULL)
+                currentelement = recomputeandreturnmin();
+            else
+                currentelement = bucketV[currentminelement_bindex][currentminelement_index];
+
+            return currentelement;
+        }
+    }
+
+    void insert(T element, int priority)
+    {
+        //compute the index of the bucket where to put it in
+        int bucket_increment = (priority - currentfirstbucket_priority);
+        int bucket_index = (currentfirstbucket_bindex + bucket_increment) % numofbuckets;
+
+        if (bucket_increment >= numofbuckets || bucket_increment < 0) {
+            printf("ERROR: invalid priority=%d (currentfirstbucket_priority=%d) used with sliding buckets\n",
+                       priority, currentfirstbucket_priority);
+            throw new SBPL_Exception();
+        }
+
+        //insert the element
+        lastelementindexV[bucket_index]++;
+
+        if (bucketV[bucket_index] == NULL) createbucket(bucket_index);
+
+        // resize the bucket if needed
+        if(lastelementindexV[bucket_index] >= dynamicsize[bucket_index])
+        {
+            const int new_size = dynamicsize[bucket_index]*2;
+
+            bucketV[bucket_index] = (T*) realloc(bucketV[bucket_index], sizeof(T) * new_size);
+
+            for(int i=dynamicsize[bucket_index]; i<new_size; i++)
+            {
+                bucketV[bucket_index][i] = NULL;
+            }
+            dynamicsize[bucket_index] = new_size;
+        }
+
+        bucketV[bucket_index][lastelementindexV[bucket_index]] = element;
+
+        //make sure maximum and minimum is correct
+        if (priority > currentmaxelement_priority) currentmaxelement_priority = priority;
+        if (priority < currentminelement_priority) {
+            currentminelement_priority = priority;
+            currentminelement_bindex = bucket_index;
+        }
+
+        //special case for the only entry
+        if (currentminelement_bindex == bucket_index && currentminelement_index == -1) {
+            currentminelement_index = 0;
+        }
+    }
+
+private:
+    T recomputeandreturnmin()
+    {
+        if (currentminelement_index == -1 && currentmaxelement_priority == currentminelement_priority) return NULL;
+        while (currentminelement_index == -1 || bucketV[currentminelement_bindex] == NULL ||
+               bucketV[currentminelement_bindex][currentminelement_index] == NULL)
+        {
+            //try incrementing element index
+            if (currentminelement_index < lastelementindexV[currentminelement_bindex])
+                currentminelement_index++;
+            else {
+                //there are no more elements left in this bucket
+                lastelementindexV[currentminelement_bindex] = -1;
+
+                //if it was the last bucket, then that is it
+                if (currentminelement_priority == currentmaxelement_priority) {
+                    currentminelement_index = -1;
+                    currentmaxelement_priority = currentminelement_priority;
+                    return NULL;
+                }
+
+                //try incrementing bucket index
+                currentminelement_bindex = (currentminelement_bindex + 1) % numofbuckets;
+                currentminelement_index = 0;
+                currentminelement_priority++;
+            }
+        }
+        return bucketV[currentminelement_bindex][currentminelement_index];
+    }
+
+    void createbucket(int bucketindex)
+    {
+        if (bucketV[bucketindex] != NULL) {
+            SBPL_ERROR("ERROR: trying to create a non-null bucket\n");
+            throw new SBPL_Exception();
+        }
+
+        dynamicsize[bucketindex] = 64;
+        bucketV[bucketindex] = (T*) malloc(sizeof(T) *  dynamicsize[bucketindex] );
+        for (int eind = 0; eind < dynamicsize[bucketindex]; eind++)
+            bucketV[bucketindex][eind] = NULL;
+    }
+};
+
+
+
+
 #endif

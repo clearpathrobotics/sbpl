@@ -14,6 +14,7 @@ include_directories(src/include)
 add_library(sbpl_cpr SHARED
   src/discrete_space_information/environment_nav2D.cpp
   src/discrete_space_information/environment_navxythetalat.cpp
+  src/discrete_space_information/environment_navxythetadirlat.cpp
   src/discrete_space_information/environment_navxythetamlevlat.cpp
   src/discrete_space_information/environment_nav2Duu.cpp
   src/discrete_space_information/environment_XXX.cpp
@@ -29,6 +30,7 @@ add_library(sbpl_cpr SHARED
   src/utils/mdp.cpp
   src/utils/utils.cpp
   src/utils/2Dgridsearch.cpp
+  src/utils/2Ddirgridsearch.cpp
   src/utils/config.cpp	
   )
 

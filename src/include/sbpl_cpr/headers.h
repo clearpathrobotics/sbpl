@@ -47,6 +47,7 @@
 #include <sbpl_cpr/discrete_space_information/environment_nav2D.h>
 #include <sbpl_cpr/discrete_space_information/environment_nav2Duu.h>
 #include <sbpl_cpr/discrete_space_information/environment_navxythetalat.h>
+#include <sbpl_cpr/discrete_space_information/environment_navxythetadirlat.h>
 #include <sbpl_cpr/discrete_space_information/environment_navxythetamlevlat.h>
 #include <sbpl_cpr/discrete_space_information/environment_robarm.h>
 #include <sbpl_cpr/discrete_space_information/environment_XXX.h>
@@ -59,6 +60,7 @@
 #include <sbpl_cpr/planners/viplanner.h>
 #include <sbpl_cpr/planners/lazyARA.h>
 #include <sbpl_cpr/utils/2Dgridsearch.h>
+#include <sbpl_cpr/utils/2Ddirgridsearch.h>
 #include <sbpl_cpr/utils/heap.h>
 #include <sbpl_cpr/utils/list.h>
 #include <sbpl_cpr/utils/key.h>

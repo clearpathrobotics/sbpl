@@ -2234,13 +2234,22 @@ EnvNAVXYTHETALATHashEntry_t* EnvironmentNAVXYTHETALAT::GetHashEntry_hash(int X, 
 
     //iterate over the states in the bin and select the perfect match
     vector<EnvNAVXYTHETALATHashEntry_t*>* binV = &Coord2StateIDHashTable[binid];
-    for (int ind = 0; ind < (int)binV->size(); ind++) {
-        EnvNAVXYTHETALATHashEntry_t* hashentry = binV->at(ind);
-        if (hashentry->X == X && hashentry->Y == Y && hashentry->Theta == Theta) {
+
+    // Stripping down to bare bones as this section consumes the largest
+    // single chunk of runtime for large maps. Every little bit helps here.
+    const size_t size = binV->size();
+    if (size)
+    {
+        EnvNAVXYTHETALATHashEntry_t** v = &(binV->at(0));
+        for (size_t i=0; i<size; i++)
+        {
+            EnvNAVXYTHETALATHashEntry_t* hashentry = v[i];
+            if (hashentry->X == X && hashentry->Y == Y && hashentry->Theta == Theta) {
 #if TIME_DEBUG
             time_gethash += clock()-currenttime;
 #endif
-            return hashentry;
+              return hashentry;
+            }
         }
     }
 
@@ -2603,7 +2612,7 @@ void EnvironmentNAVXYTHETALAT::InitializeEnvironment()
         SBPL_PRINTF("environment stores states in hashtable\n");
 
         //initialize the map from Coord to StateID
-        HashTableSize = 4 * 1024 * 1024; //should be power of two
+        HashTableSize = 32 * 1024 * 1024; //should be power of two
         Coord2StateIDHashTable = new vector<EnvNAVXYTHETALATHashEntry_t*> [HashTableSize];
         GetHashEntry = &EnvironmentNAVXYTHETALAT::GetHashEntry_hash;
         CreateNewHashEntry = &EnvironmentNAVXYTHETALAT::CreateNewHashEntry_hash;
