@@ -30,8 +30,8 @@
 #include <cmath>
 #include <cstring>
 #include <ctime>
-#include <sbpl_cpr/discrete_space_information/environment_navxythetalatzone.h>
-#include <sbpl_cpr/utils/2Dzonegridsearch.h>
+#include <sbpl_cpr/discrete_space_information/environment_navxythetadirlat.h>
+#include <sbpl_cpr/utils/2Ddirgridsearch.h>
 #include <sbpl_cpr/utils/key.h>
 #include <sbpl_cpr/utils/mdp.h>
 #include <sbpl_cpr/utils/mdpconfig.h>
@@ -52,36 +52,36 @@ static long int checks = 0;
 
 //-----------------constructors/destructors-------------------------------
 
-EnvironmentNAVXYTHETALATZone::EnvironmentNAVXYTHETALATZone()
+EnvironmentNAVXYTHETADIRLAT::EnvironmentNAVXYTHETADIRLAT()
  : EnvironmentNAVXYTHETALAT()
 {
   fwd_cost_func_ = NULL;
   fwd_cost_data_ = NULL;
 }
 
-EnvironmentNAVXYTHETALATZone::~EnvironmentNAVXYTHETALATZone()
+EnvironmentNAVXYTHETADIRLAT::~EnvironmentNAVXYTHETADIRLAT()
 {
-    SBPL_PRINTF("destroying EnvironmentNAVXYTHETALATZone\n");
-    if (grid2Dsearchfromstart_zone != NULL) delete grid2Dsearchfromstart_zone;
-    grid2Dsearchfromstart_zone = NULL;
+    SBPL_PRINTF("destroying EnvironmentNAVXYTHETADIRLAT\n");
+    if (grid2Dsearchfromstart_dir != NULL) delete grid2Dsearchfromstart_dir;
+    grid2Dsearchfromstart_dir = NULL;
 
-    if (grid2Dsearchfromgoal_zone != NULL) delete grid2Dsearchfromgoal_zone;
-    grid2Dsearchfromgoal_zone = NULL;
+    if (grid2Dsearchfromgoal_dir != NULL) delete grid2Dsearchfromgoal_dir;
+    grid2Dsearchfromgoal_dir = NULL;
 
 }
 
 // fall-back cost function if none is provided
 static unsigned char default_cost_function(size_t x, size_t y, int /*dx*/, int /*dy*/, void* data)
 {
-    EnvironmentNAVXYTHETALATZone* env = (EnvironmentNAVXYTHETALATZone*)data;
+    EnvironmentNAVXYTHETADIRLAT* env = (EnvironmentNAVXYTHETADIRLAT*)data;
     return env->GetMapCost(x, y);
 }
 
 //------------------------------Heuristic computation--------------------------
-void EnvironmentNAVXYTHETALATZone::EnsureHeuristicsUpdated(bool bGoalHeuristics)
+void EnvironmentNAVXYTHETADIRLAT::EnsureHeuristicsUpdated(bool bGoalHeuristics)
 {
     if (bNeedtoRecomputeStartHeuristics && !bGoalHeuristics) {
-        grid2Dsearchfromstart_zone->search(
+        grid2Dsearchfromstart_dir->search(
                                       EnvNAVXYTHETALATCfg.StartX_c, EnvNAVXYTHETALATCfg.StartY_c,
                                       EnvNAVXYTHETALATCfg.EndX_c, EnvNAVXYTHETALATCfg.EndY_c,
                                       (fwd_cost_func_ && fwd_cost_data_) ? fwd_cost_func_ : default_cost_function,
@@ -90,14 +90,14 @@ void EnvironmentNAVXYTHETALATZone::EnsureHeuristicsUpdated(bool bGoalHeuristics)
                                       SBPL_2DGRIDSEARCH_TERM_CONDITION_TWOTIMESOPTPATH);
         bNeedtoRecomputeStartHeuristics = false;
         SBPL_PRINTF("2dsolcost_infullunits=%d\n",
-                    (int)(grid2Dsearchfromstart_zone->getlowerboundoncostfromstart_inmm(EnvNAVXYTHETALATCfg.EndX_c,
+                    (int)(grid2Dsearchfromstart_dir->getlowerboundoncostfromstart_inmm(EnvNAVXYTHETALATCfg.EndX_c,
                                                                                    EnvNAVXYTHETALATCfg.EndY_c) /
                           EnvNAVXYTHETALATCfg.nominalvel_mpersecs));
 
     }
 
     if (bNeedtoRecomputeGoalHeuristics && bGoalHeuristics) {
-        grid2Dsearchfromgoal_zone->search(
+        grid2Dsearchfromgoal_dir->search(
                                      EnvNAVXYTHETALATCfg.EndX_c, EnvNAVXYTHETALATCfg.EndY_c,
                                      EnvNAVXYTHETALATCfg.StartX_c, EnvNAVXYTHETALATCfg.StartY_c,
                                      (fwd_cost_func_ && fwd_cost_data_) ? fwd_cost_func_ : default_cost_function,
@@ -106,35 +106,35 @@ void EnvironmentNAVXYTHETALATZone::EnsureHeuristicsUpdated(bool bGoalHeuristics)
                                      SBPL_2DGRIDSEARCH_TERM_CONDITION_TWOTIMESOPTPATH);
         bNeedtoRecomputeGoalHeuristics = false;
         SBPL_PRINTF("2dsolcost_infullunits=%d\n",
-                    (int)(grid2Dsearchfromgoal_zone->getlowerboundoncostfromstart_inmm(EnvNAVXYTHETALATCfg.StartX_c,
+                    (int)(grid2Dsearchfromgoal_dir->getlowerboundoncostfromstart_inmm(EnvNAVXYTHETALATCfg.StartX_c,
                                                                                   EnvNAVXYTHETALATCfg.StartY_c) /
                           EnvNAVXYTHETALATCfg.nominalvel_mpersecs));
     }
 }
 
 
-void EnvironmentNAVXYTHETALATZone::SetSearchCostFunction(unsigned char (*cost_func)(size_t, size_t, int, int, void*), void* cost_data)
+void EnvironmentNAVXYTHETADIRLAT::SetSearchCostFunction(unsigned char (*cost_func)(size_t, size_t, int, int, void*), void* cost_data)
 {
     fwd_cost_func_ = cost_func;
     fwd_cost_data_ = cost_data;
 }
 
-void EnvironmentNAVXYTHETALATZone::ComputeHeuristicValues()
+void EnvironmentNAVXYTHETADIRLAT::ComputeHeuristicValues()
 {
     //whatever necessary pre-computation of heuristic values is done here
     SBPL_PRINTF("Precomputing heuristics...\n");
 
-    bool reversed_search = true;
+    const bool reversed_search = true;
     //allocated 2D grid searches
-    grid2Dsearchfromstart_zone = new SBPL2DZoneGridSearch(EnvNAVXYTHETALATCfg.EnvWidth_c, EnvNAVXYTHETALATCfg.EnvHeight_c,
+    grid2Dsearchfromstart_dir = new SBPL2DDirGridSearch(EnvNAVXYTHETALATCfg.EnvWidth_c, EnvNAVXYTHETALATCfg.EnvHeight_c,
                                                  (float)EnvNAVXYTHETALATCfg.cellsize_m, !reversed_search);
-    grid2Dsearchfromgoal_zone = new SBPL2DZoneGridSearch(EnvNAVXYTHETALATCfg.EnvWidth_c, EnvNAVXYTHETALATCfg.EnvHeight_c,
-                                                (float)EnvNAVXYTHETALATCfg.cellsize_m,  reversed_search);
+    grid2Dsearchfromgoal_dir = new SBPL2DDirGridSearch(EnvNAVXYTHETALATCfg.EnvWidth_c, EnvNAVXYTHETALATCfg.EnvHeight_c,
+                                                 (float)EnvNAVXYTHETALATCfg.cellsize_m,  reversed_search);
 
     SBPL_PRINTF("done\n");
 }
 
-void EnvironmentNAVXYTHETALATZone::PrintHeuristicValues()
+void EnvironmentNAVXYTHETADIRLAT::PrintHeuristicValues()
 {
 #ifndef ROS
     const char* heur = "heur.txt";
@@ -144,15 +144,15 @@ void EnvironmentNAVXYTHETALATZone::PrintHeuristicValues()
         SBPL_ERROR("ERROR: could not open debug file to write heuristic\n");
         throw new SBPL_Exception();
     }
-    SBPL2DZoneGridSearch* grid2Dsearch = NULL;
+    SBPL2DDirGridSearch* grid2Dsearch = NULL;
 
     for (int i = 0; i < 2; i++) {
-        if (i == 0 && grid2Dsearchfromstart_zone != NULL) {
-            grid2Dsearch = grid2Dsearchfromstart_zone;
+        if (i == 0 && grid2Dsearchfromstart_dir != NULL) {
+            grid2Dsearch = grid2Dsearchfromstart_dir;
             SBPL_FPRINTF(fHeur, "start heuristics:\n");
         }
-        else if (i == 1 && grid2Dsearchfromgoal_zone != NULL) {
-            grid2Dsearch = grid2Dsearchfromgoal_zone;
+        else if (i == 1 && grid2Dsearchfromgoal_dir != NULL) {
+            grid2Dsearch = grid2Dsearchfromgoal_dir;
             SBPL_FPRINTF(fHeur, "goal heuristics:\n");
         }
         else
@@ -171,7 +171,7 @@ void EnvironmentNAVXYTHETALATZone::PrintHeuristicValues()
     SBPL_FCLOSE(fHeur);
 }
 
-int EnvironmentNAVXYTHETALATZone::GetGoalHeuristic(int stateID)
+int EnvironmentNAVXYTHETADIRLAT::GetGoalHeuristic(int stateID)
 {
 #if USE_HEUR==0
     return 0;
@@ -186,7 +186,7 @@ int EnvironmentNAVXYTHETALATZone::GetGoalHeuristic(int stateID)
 
     EnvNAVXYTHETALATHashEntry_t* HashEntry = StateID2CoordTable[stateID];
     //computes distances from start state that is grid2D, so it is EndX_c EndY_c
-    int h2D = grid2Dsearchfromgoal_zone->getlowerboundoncostfromstart_inmm(HashEntry->X, HashEntry->Y);
+    int h2D = grid2Dsearchfromgoal_dir->getlowerboundoncostfromstart_inmm(HashEntry->X, HashEntry->Y);
     int hEuclid = (int)(NAVXYTHETALAT_COSTMULT_MTOMM * EuclideanDistance_m(HashEntry->X, HashEntry->Y,
                                                                            EnvNAVXYTHETALATCfg.EndX_c,
                                                                            EnvNAVXYTHETALATCfg.EndY_c));
@@ -195,7 +195,7 @@ int EnvironmentNAVXYTHETALATZone::GetGoalHeuristic(int stateID)
     return (int)(((double)__max(h2D, hEuclid)) / EnvNAVXYTHETALATCfg.nominalvel_mpersecs);
 }
 
-int EnvironmentNAVXYTHETALATZone::GetStartHeuristic(int stateID)
+int EnvironmentNAVXYTHETADIRLAT::GetStartHeuristic(int stateID)
 {
 #if USE_HEUR==0
     return 0;
@@ -209,7 +209,7 @@ int EnvironmentNAVXYTHETALATZone::GetStartHeuristic(int stateID)
 #endif
 
     EnvNAVXYTHETALATHashEntry_t* HashEntry = StateID2CoordTable[stateID];
-    int h2D = grid2Dsearchfromstart_zone->getlowerboundoncostfromstart_inmm(HashEntry->X, HashEntry->Y);
+    int h2D = grid2Dsearchfromstart_dir->getlowerboundoncostfromstart_inmm(HashEntry->X, HashEntry->Y);
     int hEuclid = (int)(NAVXYTHETALAT_COSTMULT_MTOMM * EuclideanDistance_m(EnvNAVXYTHETALATCfg.StartX_c,
                                                                            EnvNAVXYTHETALATCfg.StartY_c, HashEntry->X,
                                                                            HashEntry->Y));
@@ -218,7 +218,7 @@ int EnvironmentNAVXYTHETALATZone::GetStartHeuristic(int stateID)
     return (int)(((double)__max(h2D, hEuclid)) / EnvNAVXYTHETALATCfg.nominalvel_mpersecs);
 }
 
-int EnvironmentNAVXYTHETALATZone::GetActionCost(int SourceX, int SourceY, int SourceTheta,
+int EnvironmentNAVXYTHETADIRLAT::GetActionCost(int SourceX, int SourceY, int SourceTheta,
                                                 EnvNAVXYTHETALATAction_t* action)
 {
     sbpl_2Dcell_t cell;
@@ -249,8 +249,6 @@ int EnvironmentNAVXYTHETALATZone::GetActionCost(int SourceX, int SourceY, int So
 
         for (i = 0; i < size; i++)
         {
-            interm3Dcell = action->interm3DcellsV.at(i);
-
             if(i < size-1)
             {
               dx = icells[i+1].x - icells[i].x;
@@ -306,12 +304,6 @@ int EnvironmentNAVXYTHETALATZone::GetActionCost(int SourceX, int SourceY, int So
         std::vector<sbpl_2Dcell_t>::const_iterator vend = action->intersectingcellsV.begin();
         for(it=action->intersectingcellsV.begin(); it != vend; ++it)
         {
-          //for (i = 0; i < (int)action->intersectingcellsV.size(); i++) {
-            //get the cell in the map
-            //cell = action->intersectingcellsV.at(i);
-            //cell.x = cell.x + SourceX;
-            //cell.y = cell.y + SourceY;
-
             const int cell_x = (*it).x + SourceX;
             const int cell_y = (*it).y + SourceY;
 

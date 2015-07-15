@@ -29,7 +29,7 @@
 
 #include <cstdio>
 #include <ctime>
-#include <sbpl_cpr/utils/2Dzonegridsearch.h>
+#include <sbpl_cpr/utils/2Ddirgridsearch.h>
 #include <sbpl_cpr/utils/heap.h>
 #include <sbpl_cpr/utils/list.h>
 #include <string.h>
@@ -50,7 +50,8 @@ static int dir_dy[17] = {0, 0, 1, 1, 2, 1, 2, 1, 1, 0, -1, -1, -2, -1, -2, -1, -
 #define SQ2 1.4142136
 #define SQ5 2.2360680
 static float dir_dist[17] = {0, 1, SQ5, SQ2, SQ5, 1, SQ5, SQ2, SQ5, 1, SQ5, SQ2, SQ5, 1, SQ5, SQ2, SQ5};
- // reverse directions
+
+// reverse directions
 static unsigned char rev_dir[17] = {0, 9, 10, 11, 12, 13, 14, 15, 16, 1, 2, 3, 4, 5, 6, 7, 8};
 
 static float unit_dirs[17][2] = { {0,0},
@@ -59,10 +60,11 @@ static float unit_dirs[17][2] = { {0,0},
 {       -1,         0}, {-0.894427, -0.447214}, {-0.707107, -0.707107}, {-0.447214, -0.894427},
 {        0,        -1}, { 0.447214, -0.894427}, { 0.707107, -0.707107}, { 0.894427, -0.447214} };
 
-static size_t cache_friendly_dirs_no_origin[16] = {12, 14, 10, 11, 13, 15, 16, 9, 1, 8, 7, 5, 3, 2, 6, 4};
+static unsigned char cache_friendly_dirs_no_origin[16] = {12, 14, 10, 11, 13, 15, 16, 9, 1, 8, 7, 5, 3, 2, 6, 4};
 
 using namespace std;
 
+// decide which of the 3 directions dot with the source vector to give the largest product
 inline int max_dir(const int a, const int b, const int c, const int dx, const int dy)
 {
   const float da = dx * unit_dirs[a][0] + dy * unit_dirs[a][1];
@@ -86,15 +88,14 @@ inline int max_dir(const int a, const int b, const int c, const int dx, const in
   return b;
 }
 
+namespace SBPL
+{
 // this function finds the best matching direction via dot products and
 // a binary search
-unsigned char SBPL2DZoneGridSearch::dxdyToDir(int dx, int dy)
+unsigned char dxdyToDir(int dx, int dy)
 {
   if(dx == 0 && dy == 0)
     return 0;
-
-  // unsigned char best_dir = 0;
-  // float best_dot = 0;
 
   const float d1 = dx * unit_dirs[ 1][0] + dy * unit_dirs[ 1][1];
   const float d5 = dx * unit_dirs[ 5][0] + dy * unit_dirs[ 5][1];
@@ -162,10 +163,10 @@ unsigned char SBPL2DZoneGridSearch::dxdyToDir(int dx, int dy)
 
   return 0;
 }
-
+}
 
 //---------------------initialization and destruction routines--------------------------------------------------------
-SBPL2DZoneGridSearch::SBPL2DZoneGridSearch(int width_x, int height_y, float cellsize_m, bool reverse_search)
+SBPL2DDirGridSearch::SBPL2DDirGridSearch(int width_x, int height_y, float cellsize_m, bool reverse_search)
 {
     width_ = width_x;
     height_ = height_y;
@@ -192,12 +193,12 @@ SBPL2DZoneGridSearch::SBPL2DZoneGridSearch(int width_x, int height_y, float cell
     reverse_search_direction_ = reverse_search;
 }
 
-size_t SBPL2DZoneGridSearch::xy2idx(size_t x, size_t y) const
+size_t SBPL2DDirGridSearch::xy2idx(size_t x, size_t y) const
 {
-  return x + width_ * y;
+    return x + width_ * y;
 }
 
-SBPL2DZoneGridSearch::~SBPL2DZoneGridSearch()
+SBPL2DDirGridSearch::~SBPL2DDirGridSearch()
 {
     // destroy the 2D states:
     if (g_value)
@@ -213,28 +214,20 @@ SBPL2DZoneGridSearch::~SBPL2DZoneGridSearch()
     }
 }
 
-void SBPL2DZoneGridSearch::setInfGValues()
+void SBPL2DDirGridSearch::setInfGValues()
 {
-  // populate first row by hand and then
-  // pass to memcpy for the rest of the rows in hopes
-  // of good memory alignment copies
-  for(int i=0; i<width_*height_; i++)
+  for (int i=0; i<width_*height_; i++)
     g_value[i] = INFINITECOST;
-
-  const size_t sz = sizeof(size_t) * width_;
-  for(int j=1; j<height_; j++)
-    memcpy(&g_value[j * width_], g_value, sz);
 }
 
 
-
-void SBPL2DZoneGridSearch::site_data_offset(const unsigned char* c, size_t& idx)
+void SBPL2DDirGridSearch::site_data_offset(const unsigned char* c, size_t& idx)
 {
   std::ptrdiff_t diff = c - site_data;
   idx = static_cast<size_t>(diff);
 }
 
-void SBPL2DZoneGridSearch::site_data_coordinates(const unsigned char* c, size_t& x, size_t& y)
+void SBPL2DDirGridSearch::site_data_coordinates(const unsigned char* c, size_t& x, size_t& y)
 {
     std::ptrdiff_t diff = c - site_data;
     const size_t offset = static_cast<size_t>(diff);
@@ -245,14 +238,13 @@ void SBPL2DZoneGridSearch::site_data_coordinates(const unsigned char* c, size_t&
 
 //-----------------------------------------main functions--------------------------------------------------------------
 
-bool SBPL2DZoneGridSearch::search(
+bool SBPL2DDirGridSearch::search(
             int startx_c, int starty_c, int goalx_c, int goaly_c,
             unsigned char (*cost_func)(size_t, size_t, int, int, void*),
             void* cost_data,
             unsigned char obsthresh,
             SBPL_2DGRIDSEARCH_TERM_CONDITION termination_condition)
 {
-    // bzero(g_value, width_ * height_ * sizeof(size_t));
     bzero(site_data, width_ * height_ * sizeof(unsigned char));
 #if DEBUG
 #ifndef ROS
@@ -322,7 +314,6 @@ bool SBPL2DZoneGridSearch::search(
 
     //the main repetition of expansions
     SBPL_PRINTF("2D zone search with sliding buckets and term_factor=%.3f\n", term_factor);
-    int prevg = 0;
 
     // --------------------------- Main Search Loop --------------------------
     while (!OPEN2DBLIST_->empty() && g_value[ goal_idx ] > term_factor * OPEN2DBLIST_->getminkey())
@@ -366,7 +357,7 @@ bool SBPL2DZoneGridSearch::search(
             //make sure it is not closed
             if(site_data[new_idx] & CLOSED_FLAG) continue;
 
-            //compute the cost
+            //compute the cost - using user supplied function
             const size_t mapcost = cost_func(newx, newy,
                                              reverse_search_direction_?-dir_dx[dir]:dir_dx[dir],
                                              reverse_search_direction_?-dir_dy[dir]:dir_dy[dir],
@@ -384,10 +375,9 @@ bool SBPL2DZoneGridSearch::search(
             {
                 g_value[ new_idx ] = new_value;
 
-                // point to source (not needed)
+                // point to source (not needed - this is actually a flood fill algorithm)
                 //site_data[ new_idx ] &= ~DIRECTION_MASK;
                 //site_data[ new_idx ] |= (rev_dir[dir] & DIRECTION_MASK);
-
 #if DEBUG
                 SBPL_FPRINTF(f2Dsearch, "inserting state <%d %d> with g=%d\n", newx, newy, g_value[ new_idx ]);
 #endif

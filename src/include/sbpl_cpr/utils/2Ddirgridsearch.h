@@ -1,5 +1,5 @@
-#ifndef __2DZONEGRIDSEARCH_H_
-#define __2DZONEGRIDSEARCH_H_
+#ifndef __2DDIRGRIDSEARCH_H_
+#define __2DDIRGRIDSEARCH_H_
 
 #include <cstdlib>
 #include <sbpl_cpr/planners/planner.h>
@@ -8,23 +8,22 @@
 #include <sbpl_cpr/utils/list.h>
 #include <sbpl_cpr/utils/2Dgridsearch.h>
 
-//#define SBPL_2DGRIDSEARCH_HEUR2D(x,y)  ((int)(1000*cellSize_m_*sqrt((double)((x-goalX_)*(x-goalX_)+(y-goalY_)*(y-goalY_)))))
 #define SBPL_2DGRIDSEARCH_HEUR2D(x,y)  ((int)(1000*cellSize_m_*__max(abs(x-goalX_),abs(y-goalY_))))
 
 /**
- * \brief 2D search itself
+ * \brief Custom 2D search with cost scaling based on direction
  */
-class SBPL2DZoneGridSearch
+class SBPL2DDirGridSearch
 {
 public:
     /**
-     * @brief SBPL2DZoneGridSearch Create a search space for 2D grids
+     * @brief SBPL2DDirGridSearch Create a search space for 2D grids
      * @param width_x grid width
      * @param height_y grid height
      * @param cellsize_m resolution
      */
-    SBPL2DZoneGridSearch(int width_x, int height_y, float cellsize_m, bool reverse_search);
-    ~SBPL2DZoneGridSearch();
+    SBPL2DDirGridSearch(int width_x, int height_y, float cellsize_m, bool reverse_search);
+    ~SBPL2DDirGridSearch();
 
     /// TODO: document this function
     bool search(int startx_c, int starty_c, int goalx_c, int goaly_c,
@@ -32,8 +31,6 @@ public:
                 void* cost_data,
                 unsigned char obsthresh,
                 SBPL_2DGRIDSEARCH_TERM_CONDITION termination_condition);
-
-    static unsigned char dxdyToDir(int dx, int dy);
 
     /**
      * \brief print all the values
@@ -45,7 +42,7 @@ public:
      */
     inline int getlowerboundoncostfromstart_inmm(int x, int y)
     {
-        if(!withinMap(x,y))
+        if (!withinMap(x,y))
           return largestcomputedoptf_;
         const size_t idx = xy2idx(x,y);
 
@@ -55,9 +52,9 @@ public:
             //the logic is that if s wasn't expanded, then g(s) + h(s) >=
             //maxcomputed_fval => g(s) >= maxcomputed_fval - h(s)
             return ((
-                    g_value[idx] + h <= largestcomputedoptf_)      ? g_value[idx] :
-                    largestcomputedoptf_ < INFINITECOST                       ? largestcomputedoptf_ - h :
-                                                                                INFINITECOST);
+                    g_value[idx] + h <= largestcomputedoptf_) ? g_value[idx] :
+                    largestcomputedoptf_ < INFINITECOST       ? largestcomputedoptf_ - h :
+                                                                             INFINITECOST);
         }
         else {
             //Dijkstra's search
@@ -74,7 +71,7 @@ public:
 
     size_t xy2idx(size_t x, size_t y) const;
 
-// private:
+private:
     inline bool withinMap(int x, int y)
     {
         return (x >= 0 && y >= 0 && x < width_ && y < height_);
@@ -88,7 +85,7 @@ public:
     // buffer to hold the costs from the source to all other visited points
     size_t* g_value;
 
-    // lower bits will contain source direction, upper bit is the closed flag
+    // flags for each site
     unsigned char* site_data;
 
     bool reverse_search_direction_;
@@ -110,5 +107,10 @@ public:
     //termination criterion used in the search
     SBPL_2DGRIDSEARCH_TERM_CONDITION term_condition_usedlast;
 };
+
+namespace SBPL
+{
+  unsigned char dxdyToDir(int dx, int dy);
+}
 
 #endif
