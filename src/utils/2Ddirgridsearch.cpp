@@ -40,6 +40,13 @@
 #define DIRECTION_MASK 0x1F
 #define CLOSED_FLAG    0x80
 
+// This code assumes 16 directions. It's OK if your motion primitives use directional discretizations
+// at a finer or coarser level. When looking at a motion primitive this is used for the pairwise intermediate
+// poses which are generally at a much higher theta resolution than the primitive's endpoints.
+//
+// Different directional discretizations could be created and used below. If you do opt to do this it is
+// advisable to make use of templates for the loop caps.
+
 //    6     4
 // 8  7  5  3   2
 //    9  0  1

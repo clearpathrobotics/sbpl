@@ -25,7 +25,18 @@ public:
     SBPL2DDirGridSearch(int width_x, int height_y, float cellsize_m, bool reverse_search);
     ~SBPL2DDirGridSearch();
 
-    /// TODO: document this function
+    /**
+     * @brief search Flood fill from source to destination to be used as a distance heuristic
+     * @param startx_c search source x cell coordinate
+     * @param starty_c search source y cell coordinate
+     * @param goalx_c  search destination x cell coordinate
+     * @param goaly_c  search destination y cell coordinate
+     * @param cost_func cost function used to scale base cose based on direction
+     * @param cost_data arbitrary extra data to be supplied to cost function
+     * @param obsthresh obstacle treshold value
+     * @param termination_condition SBPL termination condition
+     * @return
+     */
     bool search(int startx_c, int starty_c, int goalx_c, int goaly_c,
                 unsigned char (*cost_func)(size_t, size_t, int, int, void*),
                 void* cost_data,

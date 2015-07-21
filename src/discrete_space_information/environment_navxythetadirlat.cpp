@@ -243,54 +243,67 @@ int EnvironmentNAVXYTHETADIRLAT::GetActionCost(int SourceX, int SourceY, int Sou
     const size_t size = action->interm3DcellsV.size();
     if(size)
     {
-        int dx, dy; // deltas
-        int px, py; // positions
-        sbpl_xy_theta_cell_t* icells = &(action->interm3DcellsV.at(0));
+      int dx, dy; // deltas
+      int px, py; // positions
+      sbpl_xy_theta_cell_t* icells = &(action->interm3DcellsV.at(0));
 
+      if(fwd_cost_func_ && fwd_cost_data_)
+      {
         for (i = 0; i < size; i++)
         {
-            if(i < size-1)
+          if(i < size-1)
+          {
+            dx = icells[i+1].x - icells[i].x;
+            dy = icells[i+1].y - icells[i].y;
+          }
+          else
+          {
+            if(size > 1)
             {
-              dx = icells[i+1].x - icells[i].x;
-              dy = icells[i+1].y - icells[i].y;
+              dx = icells[i].x - icells[i-1].x;
+              dy = icells[i].y - icells[i-1].y;
             }
             else
             {
-              if(size > 1)
-              {
-                dx = icells[i].x - icells[i-1].x;
-                dy = icells[i].y - icells[i-1].y;
-              }
-              else
-              {
-                dx = 0;
-                dy = 0;
-              }
+              dx = 0;
+              dy = 0;
             }
+          }
 
-            px = SourceX + icells[i].x;
-            py = SourceY + icells[i].y;
+          px = SourceX + icells[i].x;
+          py = SourceY + icells[i].y;
 
-            if (px < 0 || px >= EnvNAVXYTHETALATCfg.EnvWidth_c ||
-                py < 0 || py >= EnvNAVXYTHETALATCfg.EnvHeight_c)
-                return INFINITECOST;
+          if (px < 0 || px >= EnvNAVXYTHETALATCfg.EnvWidth_c ||
+              py < 0 || py >= EnvNAVXYTHETALATCfg.EnvHeight_c)
+              return INFINITECOST;
 
-            unsigned char this_cell_cost;
+          unsigned char this_cell_cost = fwd_cost_func_(px, py, dx, dy, fwd_cost_data_);
 
-            if(fwd_cost_func_ && fwd_cost_data_)
-            {
-                this_cell_cost = fwd_cost_func_(px, py, dx, dy, fwd_cost_data_);
-            }
-            else
-            {
-                this_cell_cost = EnvNAVXYTHETALATCfg.Grid2D[px][py];
-            }
+          maxcellcost = __max(maxcellcost, this_cell_cost);
 
-            maxcellcost = __max(maxcellcost, this_cell_cost);
-
-            //check that the robot is NOT in the cell at which there is no valid orientation
-            if (maxcellcost >= EnvNAVXYTHETALATCfg.cost_inscribed_thresh) return INFINITECOST;
+          //check that the robot is NOT in the cell at which there is no valid orientation
+          if (maxcellcost >= EnvNAVXYTHETALATCfg.cost_inscribed_thresh) return INFINITECOST;
         }
+      }
+      else
+      {
+        for (i = 0; i < size; i++)
+        {
+          px = SourceX + icells[i].x;
+          py = SourceY + icells[i].y;
+
+          if (px < 0 || px >= EnvNAVXYTHETALATCfg.EnvWidth_c ||
+              py < 0 || py >= EnvNAVXYTHETALATCfg.EnvHeight_c)
+              return INFINITECOST;
+
+          unsigned char this_cell_cost = EnvNAVXYTHETALATCfg.Grid2D[px][py];
+
+          maxcellcost = __max(maxcellcost, this_cell_cost);
+
+          //check that the robot is NOT in the cell at which there is no valid orientation
+          if (maxcellcost >= EnvNAVXYTHETALATCfg.cost_inscribed_thresh) return INFINITECOST;
+        }
+      }
     }
 
     //check collisions that for the particular footprint orientation along the action
